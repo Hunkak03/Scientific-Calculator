@@ -1,0 +1,164 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Calculadora Científica</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+*{box-sizing:border-box;font-family:Segoe UI,Roboto,sans-serif}
+body{background:linear-gradient(135deg,#020617,#0f172a);display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;color:#e5e7eb}
+body.light{background:linear-gradient(135deg,#e5e7eb,#f8fafc);color:#020617}
+.calculator{background:#020617;border-radius:20px;width:420px;box-shadow:0 25px 60px rgba(0,0,0,.7);padding:20px;transition:width .4s,background .3s;position:relative}
+body.light .calculator{background:#f8fafc}
+.calculator.simple{width:320px}
+.display{background:#020617;color:#f9fafb;border-radius:12px;padding:15px;font-size:2rem;text-align:right;min-height:60px;border:1px solid #1e293b}
+body.light .display{background:#e5e7eb;color:#020617}
+.error{min-height:22px;font-size:.8rem;margin:6px 4px 10px;color:#f87171;opacity:0;transition:opacity .3s}
+.error.show{opacity:1}
+.mode-indicator{font-size:.75rem;text-align:right;margin-bottom:6px;color:#94a3b8}
+.author{position:absolute;top:10px;right:20px;font-size:.75rem;color:#94a3b8}
+.history-controls{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.history-controls button{flex:1;background:#334155;border:none;color:#e5e7eb;border-radius:8px;padding:6px;cursor:pointer;font-size:.7rem}
+body.light .history-controls button{background:#cbd5f5;color:#020617}
+.history{background:#020617;border-radius:10px;border:1px solid #1e293b;padding:8px;font-size:.85rem;max-height:120px;overflow-y:auto;margin-bottom:10px;color:#94a3b8}
+body.light .history{background:#e5e7eb}
+.history div{cursor:pointer;padding:3px 0}
+.history div:hover{color:#22c55e}
+.buttons{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;transition:grid-template-columns .4s}
+.calculator.simple .buttons{grid-template-columns:repeat(4,1fr)}
+button{padding:15px 10px;font-size:1rem;border:none;border-radius:10px;cursor:pointer;background:#1e293b;color:#e5e7eb;transition:transform .1s,background .2s,opacity .3s}
+body.light button{background:#cbd5f5;color:#020617}
+button:hover{background:#334155}
+button:active{transform:scale(.95)}
+.operator{background:#2563eb}
+.equal{background:#22c55e;grid-column:span 2}
+.calculator.simple .equal{grid-column:span 1}
+.danger{background:#dc2626}
+.secondary{background:#475569}
+.scientific{transition:all .3s}
+.hidden{opacity:0;transform:scale(.6);pointer-events:none;position:absolute}
+.test-panel{margin-top:10px;font-size:.7rem;color:#a7f3d0}
+</style>
+</head>
+<body>
+<div id="calc" class="calculator">
+  <div class="author">Hecho por: Daniel Yeste</div>
+  <div id="mode" class="mode-indicator">Modo: Científica · RAD</div>
+  <div id="display" class="display">0</div>
+  <div id="error" class="error"></div>
+
+  <div class="history-controls">
+    <button onclick="clearHistory()">🗑 Borrar</button>
+    <button onclick="exportHistory()">📄 Exportar</button>
+    <button onclick="toggleMode()">🔁 Modo</button>
+    <button onclick="toggleAngle()">° / RAD</button>
+    <button onclick="toggleTheme()">☀ / 🌙</button>
+    <button onclick="runTests()">🧪 Tests</button>
+  </div>
+
+  <div id="history" class="history"></div>
+
+  <div class="buttons">
+    <button class="danger" onclick="clearAll()">AC</button>
+    <button class="secondary" onclick="del()">DEL</button>
+    <button onclick="append('(')">(</button>
+    <button onclick="append(')')">)</button>
+    <button class="operator" onclick="append('/')">÷</button>
+
+    <button onclick="append('7')">7</button>
+    <button onclick="append('8')">8</button>
+    <button onclick="append('9')">9</button>
+    <button class="operator" onclick="append('*')">×</button>
+    <button class="scientific" onclick="power()">xʸ</button>
+
+    <button onclick="append('4')">4</button>
+    <button onclick="append('5')">5</button>
+    <button onclick="append('6')">6</button>
+    <button class="operator" onclick="append('-')">−</button>
+    <button class="scientific" onclick="sqrt()">√</button>
+
+    <button onclick="append('1')">1</button>
+    <button onclick="append('2')">2</button>
+    <button onclick="append('3')">3</button>
+    <button class="operator" onclick="append('+')">+</button>
+    <button class="scientific" onclick="log10()">log</button>
+
+    <button onclick="append('0')">0</button>
+    <button onclick="append('.')">.</button>
+    <button class="scientific" onclick="pi()">π</button>
+    <button class="scientific" onclick="sin()">sin</button>
+    <button class="scientific" onclick="cos()">cos</button>
+
+    <button class="scientific" onclick="tan()">tan</button>
+    <button class="scientific" onclick="ln()">ln</button>
+    <button class="scientific" onclick="exp()">eˣ</button>
+    <button class="equal" onclick="calculate()">=</button>
+  </div>
+
+  <div id="tests" class="test-panel"></div>
+</div>
+
+<audio id="click" src="https://freesound.org/data/previews/337/337049_5230888-lq.mp3"></audio>
+
+<script>
+const calc=document.getElementById('calc'),display=document.getElementById('display'),errorBox=document.getElementById('error'),historyEl=document.getElementById('history'),modeEl=document.getElementById('mode'),testsEl=document.getElementById('tests'),scientific=document.querySelectorAll('.scientific');
+let history=JSON.parse(localStorage.getItem('calc-history')||'[]');
+let isRad=true;
+const sound=document.getElementById('click');
+
+function clickSound(){
+    sound.currentTime=0;
+    sound.play();
+}
+
+document.querySelectorAll('button').forEach(b=>{
+    const oldOnclick=b.onclick;
+    b.onclick=()=>{
+        clickSound();
+        oldOnclick();
+    };
+});
+
+function updateMode(){modeEl.textContent=`Modo: ${calc.classList.contains('simple')?'Simple':'Científica'} · ${isRad?'RAD':'°'}`}
+updateMode();
+
+function toggleTheme(){document.body.classList.toggle('light');localStorage.setItem('theme',document.body.classList.contains('light')?'light':'dark')}
+if(localStorage.getItem('theme')==='light')document.body.classList.add('light');
+
+function toggleMode(){calc.classList.toggle('simple');scientific.forEach(b=>b.classList.toggle('hidden'));updateMode()}
+function toggleAngle(){isRad=!isRad;updateMode()}
+
+function showError(m){errorBox.textContent=m;errorBox.classList.add('show')}
+function clearError(){errorBox.textContent='';errorBox.classList.remove('show')}
+
+function renderHistory(){historyEl.innerHTML='';history.forEach(h=>{const d=document.createElement('div');d.textContent=h;d.onclick=()=>display.innerText=h.split(' = ')[0];historyEl.prepend(d)})}
+renderHistory();
+function saveHistory(){localStorage.setItem('calc-history',JSON.stringify(history))}
+
+function append(v){clearError();display.innerText=display.innerText==='0'?v:display.innerText+v}
+function clearAll(){clearError();display.innerText='0'}
+function del(){clearError();display.innerText=display.innerText.slice(0,-1)||'0'}
+
+function clearHistory(){history=[];saveHistory();renderHistory()}
+function exportHistory(){const b=new Blob([history.join('\n')],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='historial_calculadora.txt';a.click()}
+
+function evaluate(expr){return Function(`'use strict';return (${expr})`)()}
+
+function calculate(){try{const r=evaluate(display.innerText);if(!isFinite(r))throw 0;history.push(`${display.innerText} = ${r}`);saveHistory();renderHistory();display.innerText=r}catch{showError('Operación matemática inválida')}}
+
+function ang(v){return isRad?v:v*Math.PI/180}
+function sin(){display.innerText=Math.sin(ang(evaluate(display.innerText)))}
+function cos(){display.innerText=Math.cos(ang(evaluate(display.innerText)))}
+function tan(){display.innerText=Math.tan(ang(evaluate(display.innerText)))}
+function sqrt(){const v=evaluate(display.innerText);if(v<0)return showError('No existe la raíz real de un número negativo');display.innerText=Math.sqrt(v)}
+function log10(){const v=evaluate(display.innerText);if(v<=0)return showError('El logaritmo solo admite números positivos');display.innerText=Math.log10(v)}
+function ln(){const v=evaluate(display.innerText);if(v<=0)return showError('El logaritmo natural solo admite números positivos');display.innerText=Math.log(v)}
+function exp(){display.innerText=Math.exp(evaluate(display.innerText))}
+function power(){append('**')}
+function pi(){append(Math.PI)}
+
+function runTests(){const tests=[['2+2',4],['5*3',15],['10/2',5],['2**3',8],['(2+3)*4',20]];let ok=0;tests.forEach(t=>{try{if(evaluate(t[0])===t[1])ok++}catch{}});testsEl.textContent=`Tests: ${ok}/${tests.length} correctos`}
+</script>
+</body>
+</html>
